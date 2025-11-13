@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - Nexa Support AI</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="topbar">
+    <span class="logo">Nexa Support AI</span>
+  </nav>
+
+  <main class="layout">
+    <section class="tickets">
+      <h2>Tickets</h2>
+      <ul id="ticket-list"></ul>
+    </section>
+
+    <section class="ticket-detail">
+      <h2 id="ticket-subject">Select a ticket</h2>
+      <div id="message-thread"></div>
+      <textarea id="reply-box" placeholder="Edit AI suggestion or type your reply..."></textarea>
+      <button id="send-reply">Send Reply</button>
+    </section>
+  </main>
+
+  <script>
+    const API = "http://localhost:5000/api";
+
+    async function loadTickets() {
+      const res = await fetch(`${API}/tickets`);
+      const data = await res.json();
+      const list = document.getElementById("ticket-list");
+      list.innerHTML = "";
+      data.forEach(t => {
+        const li = document.createElement("li");
+        li.textContent = `#${t.id} [${t.priority}] ${t.subject}`;
+        li.onclick = () => loadTicket(t.id);
+        list.appendChild(li);
+      });
+    }
+
+    async function loadTicket(id) {
+      const res = await fetch(`${API}/tickets/${id}`);
+      const data = await res.json();
+      document.getElementById("ticket-subject").textContent = data.ticket.subject;
+      const thread = document.getElementById("message-thread");
+      thread.innerHTML = "";
+      data.messages.forEach(m => {
+        const div = document.createElement("div");
+        div.className = `msg msg-${m.sender_type}`;
+        div.textContent = `${m.sender_type.toUpperCase()}: ${m.content}`;
+        thread.appendChild(div);
+      });
+
+      // preload last AI suggestion (if any) into box
+      const aiMsg = [...data.messages].reverse()
+        .find(m => m.sender_type === "ai");
+      document.getElementById("reply-box").value = aiMsg ? aiMsg.content : "";
+      document.getElementById("send-reply").onclick = () => sendReply(id);
+    }
+
+    async function sendReply(id) {
+      const content = document.getElementById("reply-box").value;
+      if (!content.trim()) return;
+      await fetch(`${API}/tickets/${id}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content })
+      });
+      await loadTicket(id);
+    }
+
+    loadTickets();
+  </script>
+</body>
+</html>

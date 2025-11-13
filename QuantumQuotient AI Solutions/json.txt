@@ -1,0 +1,5 @@
+{
+  "name": "Urgent priority rule",
+  "condition_json": {"contains": ["urgent", "immediately"]},
+  "action_json": {"set_priority": "high"}
+}
